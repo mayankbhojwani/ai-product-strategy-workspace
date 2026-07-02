@@ -45,17 +45,19 @@ def get_model_client() -> OpenAIChatCompletionClient:
         model=_settings.model_name,
         api_key=_settings.api_key,
         base_url=_settings.base_url,
-        max_retries=5,       # retries transient errors like 429s with backoff
-        timeout=400,          # avoid hanging indefinitely on a slow free-tier response
+        max_retries=1,       # retries transient errors like 429s with backoff
+        timeout=600,          # avoid hanging indefinitely on a slow free-tier response
         model_info={
             "vision": False,
-            "function_calling": False,
-            "json_output": False,
+            "function_calling": True,
+            "json_output": True,
             "family": "unknown",
-            "structured_output": False,
+            "structured_output": True,
         },
         default_headers={
-            "HTTP-Referer": "https://github.com/your-username/ai-product-strategy-workspace",
+            "HTTP-Referer": "https://github.com/mayankbhojwani/ai-product-strategy-workspace",
             "X-Title": "AI Product Strategy Workspace",
         },
     )
+
+

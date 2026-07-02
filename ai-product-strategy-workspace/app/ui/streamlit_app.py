@@ -1,12 +1,21 @@
 # app/ui/streamlit_app.py
+import os
 import asyncio
 import tempfile
-
 import streamlit as st
 
-from app.orchestration.team import run_workspace_stream
-from app.reporting.pdf_report import generate_pdf_report
+# 1. ADD THIS AT THE ABSOLUTE TOP TO LOAD YOUR .ENV FILE
+from dotenv import load_dotenv
+load_dotenv()  # This populates os.environ with the variables from your .env file
 
+# Import the V2 client from the extension framework as used in your base.py
+from autogen_ext.models.openai import OpenAIChatCompletionClient
+
+# Import the new workspace orchestrator class and the PDF generator layer
+from app.orchestration.orchestrator import ProductStrategyOrchestrator
+from app.reporting.pdf_report import generate_pdf_report
+from app.agents.factory import agent_factories
+from app.config import get_model_client
 st.set_page_config(
     page_title="AI Product Strategy Workspace",
     page_icon="🧠",
@@ -27,21 +36,34 @@ run_button = st.button("Analyze", use_container_width=True)
 
 async def run_and_render(problem_text: str, stage_placeholder, thinking_placeholder, discussion_container):
     """
-    Consumes the event stream and updates the UI as each event arrives --
-    NOT after collecting them all -- so the "thinking" indicators and
-    results actually appear live, which is the whole point of using
-    run_workspace_stream() over the blocking run_workspace().
+    Consumes the V2 event stream and updates the UI layout components live
+    as each strategic alignment slice finishes executing.
     """
     final_history = None
 
-    async for event in run_workspace_stream(problem_text):
+    # Verify that the environment variable was successfully loaded
+    if not os.environ.get("OPENAI_API_KEY"):
+        st.error("Error: OPENAI_API_KEY is still not found in your environment. Check your .env file format.")
+        st.stop()
+
+    # Initialize the OpenAIChatCompletionClient correctly as required by autogen-ext.
+    model_client = get_model_client()
+
+    # Initialize the Orchestration Runner Engine
+    orchestrator = ProductStrategyOrchestrator(
+        agent_factories=agent_factories,
+        model_client=model_client
+    )
+
+    async for event in orchestrator.run_workspace_stream(problem_text):
         event_type = event["type"]
 
         if event_type == "stage":
-            stage_placeholder.info(f"### {event['label']}\n\n{event['description']}")
+            stage_text = event.get("content") or event.get("label", "Processing Step")
+            stage_placeholder.info(f"### {stage_text}")
 
         elif event_type == "thinking":
-            thinking_placeholder.write(f"🤖 **{event['label']}** is thinking...")
+            thinking_placeholder.write(f"🤖 **{event['label']}** is analyzing...")
 
         elif event_type == "message":
             thinking_placeholder.empty()
@@ -63,7 +85,7 @@ if run_button:
     thinking_placeholder = st.empty()
 
     st.divider()
-    st.header("Discussion")
+    st.header("Discussion Log")
     discussion_container = st.container()
 
     try:
@@ -71,13 +93,13 @@ if run_button:
             run_and_render(problem, stage_placeholder, thinking_placeholder, discussion_container)
         )
     except Exception as e:
-        st.error(f"Workspace failed:\n\n{e}")
+        st.error(f"Workspace execution failed:\n\n{e}")
         st.stop()
 
     thinking_placeholder.empty()
 
     if not final_history:
-        st.error("The workspace finished without producing any results.")
+        st.error("The workspace finished without producing any structural history assets.")
         st.stop()
 
     st.success("Analysis Complete!")
@@ -86,27 +108,30 @@ if run_button:
     st.header("Executive Recommendation")
 
     manager_response = next(
-        (r for r in reversed(final_history) if r.agent == "manager"),
+        (r for r in reversed(final_history) if r.agent == "manager" and r.stage == "final_decision"),
         None,
     )
 
     if manager_response:
         st.markdown(manager_response.content)
     else:
-        st.info("No manager recommendation found.")
-
-    pdf_result = {"history": final_history}
+        st.info("No final executive manager decision was found in workspace logs.")
 
     with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
-        generate_pdf_report(problem, pdf_result, tmp.name)
+        generate_pdf_report(
+            problem=problem,
+            history=final_history,
+            output_path=tmp.name
+        )
         pdf_bytes_path = tmp.name
 
     with open(pdf_bytes_path, "rb") as f:
         pdf_bytes = f.read()
 
     st.download_button(
-        label="📄 Download PDF Report",
+        label="📄 Download Executive PDF Report",
         data=pdf_bytes,
         file_name="product_strategy_report.pdf",
         mime="application/pdf",
+        use_container_width=True
     )

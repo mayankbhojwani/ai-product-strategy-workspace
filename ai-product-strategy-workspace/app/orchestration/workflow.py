@@ -1,36 +1,28 @@
 # app/orchestration/workflow.py
-"""
-Defines the round structure for the multi-round discussion.
+from typing import List, Dict
 
-Round 1's participants are fixed and known upfront. Round 2 and Round 3
-participants are NOT defined here -- they're determined at runtime by which
-specialists the Manager flags as involved in unresolved disagreements. That's
-the entire point of this design: debate only where there's real disagreement.
-"""
-
-ALL_SPECIALISTS = [
+ALL_SPECIALISTS: List[str] = [
     "product_manager",
     "user_researcher",
     "data_scientist",
-    "growth_lead",
     "engineer",
-    "devils_advocate",
+    "growth_lead",
+    "devils_advocate"
 ]
 
-ROUND_LABELS = {
-    "round_1": "🔍 Round 1 — Independent Analysis",
-    "round_1_summary": "📋 Disagreement Summary",
-    "round_2": "⚖️ Round 2 — Resolving Disagreements",
-    "round_2_summary": "📋 Resolution Summary",
-    "round_3": "🎯 Round 3 — Final Validation Steps",
-    "final": "🏁 Final Recommendation",
+AGENT_LABELS: Dict[str, str] = {
+    "product_manager": "Product Manager",
+    "user_researcher": "User Researcher",
+    "data_scientist": "Data Scientist",
+    "engineer": "Software Engineer",
+    "growth_lead": "Growth Lead",
+    "devils_advocate": "Devil's Advocate",
+    "manager": "Team Manager"
 }
 
-ROUND_DESCRIPTIONS = {
-    "round_1": "Each specialist gives an independent analysis, with no visibility into each other's responses.",
-    "round_1_summary": "The Manager identifies key disagreements, assumptions, and open questions -- no decision yet.",
-    "round_2": "Only specialists involved in a disagreement respond, to defend, refine, or challenge their position.",
-    "round_2_summary": "The Manager summarizes what's been resolved and what remains uncertain.",
-    "round_3": "Only specialists needed for unresolved issues propose the smallest next step to reach consensus.",
-    "final": "The Manager produces the final recommendation, alternatives rejected, risks, and next validation step.",
+STAGE_LABELS: Dict[str, str] = {
+    "round_1": "🔍 Stage 1 — Independent Strategic Analysis",
+    "manager_review": "📋 Stage 2 — Cross-Functional Alignment Review",
+    "targeted_discussion": "⚖️ Stage 3 — Target Conflict Resolution",
+    "final_decision": "🏁 Stage 4 — Final Executive Decision"
 }
