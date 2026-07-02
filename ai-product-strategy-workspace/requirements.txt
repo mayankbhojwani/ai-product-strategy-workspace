@@ -1,4 +1,6 @@
 autogen-agentchat
-autogen-ext[openai]
+autogen-ext[openai,ollama]
 streamlit
 python-dotenv
+reportlab
+
