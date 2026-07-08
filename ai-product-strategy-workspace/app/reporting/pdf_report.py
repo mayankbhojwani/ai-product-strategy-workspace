@@ -60,6 +60,9 @@ def _clean_markdown_to_xml(text: str) -> str:
     """
     Escapes characters safely and transforms basic Markdown elements into ReportLab XML markup strings.
     """
+    # Strip pseudo-HTML wrapper tags
+    text = re.sub(r"</?(summary|recommendations|roadmap|risks|metadata)>", "", text, flags=re.IGNORECASE)
+
     text = html.escape(text)
 
     # Machine string cleanups
@@ -253,9 +256,9 @@ def generate_pdf_report(problem: str, history: List[AgentResponse], output_path:
     stages_to_print = [
         ("round_1", "Stage 1: Independent Baseline Analysis"),
         ("manager_review", "Stage 2: Cross-Functional Alignment Review"),
-        ("targeted_discussion", "Stage 3: Targeted Conflict Resolution"),
-        ("final_decision", "Stage 4: Final Executive Decision Summary")
+        ("targeted_discussion", "Stage 3: Targeted Conflict Resolution")
     ]
+
 
     for stage_key, stage_title in stages_to_print:
         stage_responses = [r for r in history if r.stage == stage_key]

@@ -32,42 +32,80 @@ st.set_page_config(
 # Premium UI CSS Styling
 st.markdown("""
 <style>
-    .reportview-container {
-        background: #0F172A;
+    @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap');
+    
+    html, body, [class*="css"], .stMarkdown {
+        font-family: 'Outfit', sans-serif !important;
     }
-    .card {
-        background-color: #1E293B;
-        border-radius: 12px;
-        padding: 24px;
-        border: 1px solid #334155;
-        margin-bottom: 20px;
+    
+    .stApp {
+        background-color: #0B0F19 !important;
     }
+    
+    .glass-card {
+        background: rgba(30, 41, 59, 0.45);
+        backdrop-filter: blur(12px);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 16px;
+        padding: 28px;
+        box-shadow: 0 10px 40px 0 rgba(0, 0, 0, 0.25);
+        margin-bottom: 24px;
+        transition: transform 0.2s ease-in-out;
+    }
+    .glass-card:hover {
+        transform: translateY(-2px);
+        border-color: rgba(255, 255, 255, 0.15);
+    }
+    
     .badge-high {
-        background-color: #059669;
+        background: linear-gradient(135deg, #059669, #10B981);
         color: white;
-        padding: 4px 8px;
-        border-radius: 12px;
-        font-size: 12px;
-        font-weight: bold;
+        padding: 6px 12px;
+        border-radius: 20px;
+        font-size: 13px;
+        font-weight: 600;
+        box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2);
     }
     .badge-medium {
-        background-color: #D97706;
+        background: linear-gradient(135deg, #D97706, #F59E0B);
         color: white;
-        padding: 4px 8px;
-        border-radius: 12px;
-        font-size: 12px;
-        font-weight: bold;
+        padding: 6px 12px;
+        border-radius: 20px;
+        font-size: 13px;
+        font-weight: 600;
+        box-shadow: 0 4px 12px rgba(245, 158, 11, 0.2);
     }
     .badge-low {
-        background-color: #DC2626;
+        background: linear-gradient(135deg, #DC2626, #EF4444);
         color: white;
-        padding: 4px 8px;
-        border-radius: 12px;
-        font-size: 12px;
-        font-weight: bold;
+        padding: 6px 12px;
+        border-radius: 20px;
+        font-size: 13px;
+        font-weight: 600;
+        box-shadow: 0 4px 12px rgba(239, 68, 68, 0.2);
+    }
+    
+    /* Sleek Button Styles */
+    div.stButton > button {
+        background: linear-gradient(135deg, #3B82F6, #2563EB) !important;
+        color: white !important;
+        border-radius: 10px !important;
+        border: none !important;
+        padding: 12px 24px !important;
+        font-weight: 600 !important;
+        font-size: 15px !important;
+        letter-spacing: 0.5px !important;
+        box-shadow: 0 4px 14px rgba(37, 99, 235, 0.3) !important;
+        transition: all 0.25s ease !important;
+    }
+    div.stButton > button:hover {
+        transform: translateY(-2px) !important;
+        box-shadow: 0 6px 20px rgba(37, 99, 235, 0.45) !important;
+        background: linear-gradient(135deg, #60A5FA, #3B82F6) !important;
     }
 </style>
 """, unsafe_allow_html=True)
+
 
 
 st.title("🧠 AI Product Strategy Workspace")
@@ -265,13 +303,16 @@ elif st.session_state.phase == "discussion_loop":
         st.stop()
 
     # Display Agent recommendation card
-    st.subheader(f"Advisor Recommendation: {agent_label}")
     conf_class = f"badge-{data['confidence'].lower()}"
-    st.markdown(f"**Confidence Level:** <span class='{conf_class}'>{data['confidence']}</span>", unsafe_allow_html=True)
+    st.markdown(f"""
+    <div style="background: rgba(30, 41, 59, 0.4); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 12px; padding: 20px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center;">
+        <span style="font-size: 20px; font-weight: 600; color: #F8FAFC;">📋 {agent_label}'s Analysis Briefing</span>
+        <span class="{conf_class}">{data['confidence']} Confidence</span>
+    </div>
+    """, unsafe_allow_html=True)
 
-    
-    st.markdown("### Recommendation")
-    st.write(data["clean"])
+    st.markdown("### 💡 Strategic Recommendation")
+    st.markdown(data["clean"])
     
     col1, col2 = st.columns(2)
     with col1:
@@ -458,17 +499,17 @@ elif st.session_state.phase == "final_review":
                 
                 Provide a structured report with exactly these 4 sections:
                 
-                ### Executive Summary
-                <summary>
+                ## Executive Summary
+                [Provide summary here]
                 
-                ### Prioritized Recommendations
-                <recommendations>
+                ## Prioritized Recommendations
+                [Provide recommendations here]
                 
-                ### Implementation Roadmap
-                <roadmap>
+                ## Implementation Roadmap
+                [Provide roadmap here]
                 
-                ### Remaining Risks
-                <risks>
+                ## Remaining Risks
+                [Provide risks here]
                 """
                 drafts_text = asyncio.run(call_llm_with_retry(manager_agent, prompt))
                 
