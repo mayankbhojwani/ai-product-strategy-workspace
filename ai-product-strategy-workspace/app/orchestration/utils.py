@@ -44,3 +44,49 @@ async def call_llm_with_retry(agent_instance: Any, prompt: str, max_retries: int
             await asyncio.sleep(delay)
             delay *= 2
     return ""
+
+def parse_metadata_block(content: str) -> dict:
+    """
+    Parses metadata from the agent response block [METADATA]...[/METADATA].
+    """
+    import re
+    meta_pattern = re.compile(r"\[METADATA\](.*?)\[/METADATA\]", re.DOTALL | re.IGNORECASE)
+    match = meta_pattern.search(content)
+    
+    # Default values
+    confidence = "Medium"
+    assumptions = []
+    risks = []
+    clean_content = content
+    
+    if match:
+        meta_content = match.group(1)
+        # remove the metadata block from the content
+        clean_content = content.replace(match.group(0), "").strip()
+        
+        # parse confidence
+        conf_match = re.search(r"CONFIDENCE:\s*(\w+)", meta_content, re.IGNORECASE)
+        if conf_match:
+            confidence = conf_match.group(1).strip().capitalize()
+            if confidence not in ["High", "Medium", "Low"]:
+                confidence = "Medium"
+                
+        # parse assumptions
+        ass_match = re.search(r"KEY ASSUMPTIONS:\s*(.*?)(?=RISKS:|$)", meta_content, re.DOTALL | re.IGNORECASE)
+        if ass_match:
+            ass_text = ass_match.group(1)
+            assumptions = [line.strip("- *").strip() for line in ass_text.strip().split("\n") if line.strip()]
+            
+        # parse risks
+        risks_match = re.search(r"RISKS:\s*(.*)", meta_content, re.DOTALL | re.IGNORECASE)
+        if risks_match:
+            risks_text = risks_match.group(1)
+            risks = [line.strip("- *").strip() for line in risks_text.strip().split("\n") if line.strip()]
+            
+    return {
+        "clean_content": clean_content,
+        "confidence": confidence,
+        "assumptions": assumptions if assumptions else ["None identified"],
+        "risks": risks if risks else ["None identified"]
+    }
+
