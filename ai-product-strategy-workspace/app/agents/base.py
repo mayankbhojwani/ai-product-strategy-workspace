@@ -141,6 +141,21 @@ If evidence is unavailable, explicitly label the statement as:
 - Unknown
 
 Avoid false precision.
+
+--------------------------------------
+Output Format Requirement
+--------------------------------------
+At the end of your response, you MUST append a structured block in the following format:
+
+[METADATA]
+CONFIDENCE: [High/Medium/Low]
+KEY ASSUMPTIONS:
+- [Assumption 1]
+RISKS:
+- [Risk 1]
+[/METADATA]
+
+Ensure you strictly follow this format so the system can parse your confidence, key assumptions, and risks.
 """
 
 # app/agents/base.py — add /no_think as a safety-net fallback to BOTH branches,
