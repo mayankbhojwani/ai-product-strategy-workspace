@@ -9,11 +9,10 @@ from app.orchestration.team import run_workspace
 async def main() -> None:
     result = await run_workspace("How should Spotify reduce Premium churn?")
 
-    for message in result.messages:
-        print(f"\n--- {message.source} ---")
+    for message in result:
+        print(f"\n--- {message.label} ({message.stage}) ---")
         print(message.content)
 
-    print(f"\n[stopped because: {result.stop_reason}]")
 
 
 if __name__ == "__main__":

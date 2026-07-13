@@ -95,6 +95,86 @@ def _extract_section(text: str, heading_title: str) -> str:
     return ""
 
 
+def _clean_inline_markdown(text: str) -> str:
+    """
+    Escapes HTML characters and parses inline bold/italic markdown.
+    """
+    # Strip pseudo-HTML wrapper tags
+    text = re.sub(r"</?(summary|recommendations|roadmap|risks|metadata)>", "", text, flags=re.IGNORECASE)
+    
+    text = html.escape(text)
+    
+    # Machine string cleanups
+    text = re.sub(r"TERMINATE\s*$", "", text, flags=re.MULTILINE)
+    text = re.sub(r"INVOLVED_AGENTS:\s*.+$", "", text, flags=re.MULTILINE | re.IGNORECASE)
+    
+    # Bold and Italic formatting conversion
+    text = re.sub(r"\*\*(.*?)\*\*", r"<b>\1</b>", text)
+    text = re.sub(r"\*(.*?)\*", r"<i>\1</i>", text)
+    
+    return text
+
+
+def add_markdown_to_story(story: list, text: str, styles: Any):
+    """
+    Parses a markdown string and appends formatted ReportLab flowables to the story.
+    Handles headers, bullet lists, bold/italic markup, and removes metadata blocks.
+    """
+    # Remove metadata blocks
+    text = re.sub(r"\[METADATA\].*?\[/METADATA\]", "", text, flags=re.DOTALL | re.IGNORECASE)
+    
+    # Split into blocks by double newlines (paragraphs/lists)
+    blocks = text.split("\n\n")
+    for block in blocks:
+        block = block.strip()
+        if not block:
+            continue
+        
+        # Check if block is a heading
+        heading_match = re.match(r"^(#+)\s*(.*?)$", block)
+        if heading_match:
+            level = len(heading_match.group(1))
+            heading_text = _clean_inline_markdown(heading_match.group(2))
+            if level == 1:
+                story.append(Paragraph(heading_text, styles["ReportH1"]))
+            else:
+                story.append(Paragraph(heading_text, styles["ReportH2"]))
+            continue
+        
+        # Check if block is a bullet list
+        lines = block.split("\n")
+        is_bullet_list = all(re.match(r"^\s*([-\*•]|\d+\.)", line) for line in lines if line.strip())
+        
+        if is_bullet_list:
+            for line in lines:
+                if not line.strip():
+                    continue
+                # Clean list prefix
+                cleaned_line = re.sub(r"^\s*([-\*•]|\d+\.)\s*", "", line)
+                cleaned_line = _clean_inline_markdown(cleaned_line)
+                story.append(Paragraph(f"• {cleaned_line}", styles["ReportBullet"]))
+            story.append(Spacer(1, 4))
+            continue
+        
+        # Normal paragraph (may have single newlines that should be spaces to allow reflow)
+        cleaned_lines = []
+        for line in lines:
+            line = line.strip()
+            if not line:
+                continue
+            if re.match(r"^([-\*•]|\d+\.)", line):
+                # This line is a list item inside a paragraph block
+                cleaned_line = re.sub(r"^([-\*•]|\d+\.)\s*", "", line)
+                cleaned_line = _clean_inline_markdown(cleaned_line)
+                story.append(Paragraph(f"• {cleaned_line}", styles["ReportBullet"]))
+            else:
+                cleaned_lines.append(_clean_inline_markdown(line))
+        
+        if cleaned_lines:
+            paragraph_text = " ".join(cleaned_lines)
+            story.append(Paragraph(paragraph_text, styles["ReportBody"]))
+
+
 def generate_pdf_report(problem: str, history: List[AgentResponse], output_path: str) -> str:
     # Initialize basic stylesheet
     styles = getSampleStyleSheet()
@@ -166,13 +246,21 @@ def generate_pdf_report(problem: str, history: List[AgentResponse], output_path:
         keepWithNext=True
     ))
 
+    styles.add(ParagraphStyle(
+        name="ReportBullet",
+        parent=styles["ReportBody"],
+        leftIndent=15,
+        firstLineIndent=-10,
+        spaceAfter=4
+    ))
+
     doc = SimpleDocTemplate(
         output_path,
         pagesize=letter,
         leftMargin=54,
         rightMargin=54,
-        topMargin=54,
-        bottomMargin=54
+        topMargin=72,
+        bottomMargin=72
     )
 
     story = []
@@ -197,7 +285,7 @@ def generate_pdf_report(problem: str, history: List[AgentResponse], output_path:
     # MISSION / PROBLEM STATEMENT
     # ==========================================
     story.append(Paragraph("Operational Problem Statement", styles["ReportH1"]))
-    story.append(Paragraph(_clean_markdown_to_xml(problem), styles["ReportBody"]))
+    add_markdown_to_story(story, problem, styles)
     story.append(Spacer(1, 10))
     story.append(HRFlowable(width="100%", thickness=1, color=colors.HexColor("#E2E8F0"), spaceAfter=15))
 
@@ -213,7 +301,7 @@ def generate_pdf_report(problem: str, history: List[AgentResponse], output_path:
     if not exec_summary:
         # Fallback if structural slicing didn't isolate block
         exec_summary = final_text.split("##")[0] if final_text else "Consensus runtime finalized successfully."
-    story.append(Paragraph(_clean_markdown_to_xml(exec_summary), styles["ReportBody"]))
+    add_markdown_to_story(story, exec_summary, styles)
     story.append(Spacer(1, 10))
 
     # ==========================================
@@ -223,7 +311,7 @@ def generate_pdf_report(problem: str, history: List[AgentResponse], output_path:
     recs = _extract_section(final_text, "Why This Decision") or _extract_section(final_text, "Final Recommendation")
     if not recs:
         recs = "Review comprehensive analysis attached below in structural workspace transcripts."
-    story.append(Paragraph(_clean_markdown_to_xml(recs), styles["ReportBody"]))
+    add_markdown_to_story(story, recs, styles)
     story.append(Spacer(1, 10))
 
     # ==========================================
@@ -233,7 +321,7 @@ def generate_pdf_report(problem: str, history: List[AgentResponse], output_path:
     roadmap = _extract_section(final_text, "Next Validation Step")
     if not roadmap:
         roadmap = "Iterative steps described inside baseline discussion indexes."
-    story.append(Paragraph(_clean_markdown_to_xml(roadmap), styles["ReportBody"]))
+    add_markdown_to_story(story, roadmap, styles)
     story.append(Spacer(1, 10))
 
     # ==========================================
@@ -243,7 +331,7 @@ def generate_pdf_report(problem: str, history: List[AgentResponse], output_path:
     risks = _extract_section(final_text, "Remaining Risks") or _extract_section(final_text, "Alternatives Rejected")
     if not risks:
         risks = "No major immediate engineering constraints tracked."
-    story.append(Paragraph(_clean_markdown_to_xml(risks), styles["ReportBody"]))
+    add_markdown_to_story(story, risks, styles)
 
     # ==========================================
     # TEAM DISCUSSION APPENDIX (GROUPED BY STAGE)
@@ -273,7 +361,7 @@ def generate_pdf_report(problem: str, history: List[AgentResponse], output_path:
             post_block = []
             post_block.append(Paragraph(f"<b>Agent:</b> {resp.label}", styles["AppendixMeta"]))
             post_block.append(Spacer(1, 4))
-            post_block.append(Paragraph(_clean_markdown_to_xml(resp.content), styles["ReportBody"]))
+            add_markdown_to_story(post_block, resp.content, styles)
             post_block.append(Spacer(1, 12))
             story.append(KeepTogether(post_block))
 

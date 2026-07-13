@@ -32,10 +32,11 @@ def build_orchestrator() -> ProductStrategyOrchestrator:
 
 async def run_workspace(problem: str) -> list:
     orchestrator = build_orchestrator()
-    return await orchestrator.run(problem)
+    return await orchestrator.run_workspace(problem)
 
 
 async def run_workspace_stream(problem: str):
     orchestrator = build_orchestrator()
-    async for event in orchestrator.run_stream(problem):
+    async for event in orchestrator.run_workspace_stream(problem):
         yield event
+
